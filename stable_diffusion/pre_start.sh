@@ -26,8 +26,8 @@ echo "Fixing Kohya_ss venv..."
 /fix_venv.sh /kohya_ss/venv /workspace/kohya_ss/venv
 
 # Link model and VAE
-ln -s /workspace/sd-models/v1-5-pruned.safetensors /workspace/stable-diffusion-webui/models/Stable-diffusion/v1-5-pruned.safetensors
-ln -s /workspace/sd-models/vae-ft-mse-840000-ema-pruned.safetensors workspace/stable-diffusion-webui/models/VAE/vae-ft-mse-840000-ema-pruned.safetensors
+ln -s /sd-models/v1-5-pruned.safetensors /workspace/stable-diffusion-webui/models/Stable-diffusion/v1-5-pruned.safetensors
+ln -s /sd-models/vae-ft-mse-840000-ema-pruned.safetensors workspace/stable-diffusion-webui/models/VAE/vae-ft-mse-840000-ema-pruned.safetensors
 
 # Configure accelerate
 echo "Configuring accelerate..."
