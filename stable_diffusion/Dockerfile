@@ -13,9 +13,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SHELL=/bin/bash
 
 # Add Stable Diffusion 1.5 model and VAE
-RUN mkdir -p /stable-diffusion-webui/sd-models
-COPY --from=sd-models /v1-5-pruned.safetensors /stable-diffusion-webui/sd-models/v1-5-pruned.safetensors
-COPY --from=sd-models /vae-ft-mse-840000-ema-pruned.safetensors /stable-diffusion-webui/sd-models/vae-ft-mse-840000-ema-pruned.safetensors
+RUN mkdir -p /workspace/sd-models
+COPY --from=sd-models /v1-5-pruned.safetensors /workspace/sd-models/v1-5-pruned.safetensors
+COPY --from=sd-models /vae-ft-mse-840000-ema-pruned.safetensors /workspace/sd-models/vae-ft-mse-840000-ema-pruned.safetensors
 
 # Create workspace working directory
 WORKDIR /
@@ -120,7 +120,7 @@ RUN source /venv/bin/activate && \
 
 # Cache the SD 1.5 model
 RUN source /venv/bin/activate && \
-    python3 cache-sd-model.py --use-cpu=all --ckpt /stable-diffusion-webui/sd-models/v1-5-pruned.safetensors && \
+    python3 cache-sd-model.py --use-cpu=all --ckpt /workspace/sd-models/v1-5-pruned.safetensors && \
     deactivate
 
 # Fix Tensorboard
