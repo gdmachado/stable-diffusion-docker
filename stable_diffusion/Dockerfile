@@ -71,7 +71,7 @@ FROM base as setup
 WORKDIR /
 RUN git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
     cd /stable-diffusion-webui && \
-    git checkout tags/${WEBUI_VERSION}
+    git checkout ${WEBUI_VERSION}
 
 WORKDIR /stable-diffusion-webui
 RUN python3 -m venv --system-site-packages /venv && \
