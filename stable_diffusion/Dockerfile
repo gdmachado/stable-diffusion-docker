@@ -1,21 +1,16 @@
 # Stage 1: Base
-FROM ashleykza/stable-diffusion-models:1.0.0 as sd-models
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
 
 ARG WEBUI_VERSION=v1.5.1
 ARG DREAMBOOTH_COMMIT=c2a5617c587b812b5a408143ddfb18fc49234edf
 ARG KOHYA_VERSION=V21.8.7
+ARG COMFYUI_COMMIT=8c730dc4a7225b2b103497ea1c2f67e48db145ab
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Africa/Johannesburg \
     PYTHONUNBUFFERED=1 \
     SHELL=/bin/bash
-
-# Add Stable Diffusion 1.5 model and VAE
-RUN mkdir -p /sd-models
-COPY --from=sd-models /v1-5-pruned.safetensors /sd-models/v1-5-pruned.safetensors
-COPY --from=sd-models /vae-ft-mse-840000-ema-pruned.safetensors /sd-models/vae-ft-mse-840000-ema-pruned.safetensors
 
 # Create workspace working directory
 WORKDIR /
@@ -35,6 +30,7 @@ RUN apt update && \
         ncdu \
         nginx \
         net-tools \
+        nvtop \
         openssh-server \
         libglib2.0-0 \
         libsm6 \
@@ -88,12 +84,12 @@ RUN source /venv/bin/activate && \
     deactivate
 
 # Clone the Automatic1111 Extensions
-RUN git clone --depth=1 https://github.com/d8ahazard/sd_dreambooth_extension.git extensions/sd_dreambooth_extension && \
-    git clone --depth=1 https://github.com/deforum-art/sd-webui-deforum.git extensions/deforum && \
-    git clone --depth=1 https://github.com/Mikubill/sd-webui-controlnet.git extensions/sd-webui-controlnet && \
-    git clone --depth=1 https://github.com/ashleykleynhans/a1111-sd-webui-locon.git extensions/a1111-sd-webui-locon && \
-    git clone --depth=1 https://github.com/s0md3v/sd-webui-roop.git extensions/sd-webui-roop && \
-    git clone --depth=1  https://github.com/wcde/sd-webui-refiner.git extensions/sd-webui-refiner
+RUN git clone https://github.com/d8ahazard/sd_dreambooth_extension.git extensions/sd_dreambooth_extension && \
+    git clone https://github.com/deforum-art/sd-webui-deforum.git extensions/deforum && \
+    git clone https://github.com/Mikubill/sd-webui-controlnet.git extensions/sd-webui-controlnet && \
+    git clone https://github.com/ashleykleynhans/a1111-sd-webui-locon.git extensions/a1111-sd-webui-locon && \
+    git clone https://github.com/s0md3v/sd-webui-roop.git extensions/sd-webui-roop && \
+    git clone https://github.com/wcde/sd-webui-refiner.git extensions/sd-webui-refiner
 
 # Install depenencies for Deforum, ControlNet and roop
 RUN source /venv/bin/activate && \
@@ -118,11 +114,6 @@ RUN source /venv/bin/activate && \
     pip3 install -r requirements.txt && \
     deactivate
 
-# Cache the SD 1.5 model
-RUN source /venv/bin/activate && \
-    python3 cache-sd-model.py --use-cpu=all --ckpt /sd-models/v1-5-pruned.safetensors && \
-    deactivate
-
 # Fix Tensorboard
 RUN source /venv/bin/activate && \
     pip3 uninstall -y tensorboard tb-nightly && \
@@ -131,10 +122,10 @@ RUN source /venv/bin/activate && \
     deactivate
 
 # Install Kohya_ss
-RUN git clone --depth=1 https://github.com/bmaltais/kohya_ss.git /kohya_ss
+RUN git clone https://github.com/bmaltais/kohya_ss.git /kohya_ss
 WORKDIR /kohya_ss
 RUN git checkout ${KOHYA_VERSION} && \
-    python3 -m venv --system-site-packag venv && \
+    python3 -m venv --system-site-packages venv && \
     source venv/bin/activate && \
     pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
     pip3 install --no-cache-dir xformers==0.0.20 \
@@ -145,6 +136,18 @@ RUN git checkout ${KOHYA_VERSION} && \
         tensorrt && \
     pip3 install -r requirements.txt && \
     pip3 install . && \
+    pip3 cache purge && \
+    deactivate
+
+# Install ComfyUI
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /ComfyUI
+WORKDIR /ComfyUI
+RUN git reset ${COMFYUI_COMMIT} --hard && \
+    python3 -m venv --system-site-packages venv && \
+    source venv/bin/activate && \
+    pip3 install --no-cache-dir torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118 xformers && \
+    pip3 install --no-cache-dir wheel && \
+    pip3 install -r requirements.txt && \
     pip3 cache purge && \
     deactivate
 
@@ -161,12 +164,15 @@ RUN wget https://github.com/runpod/runpodctl/releases/download/v1.10.0/runpodctl
     mv runpodctl /usr/local/bin
 
 # Install CivitAI Model Downloader
-RUN git clone --depth=1 https://github.com/ashleykleynhans/civitai-downloader.git && \
+RUN git clone https://github.com/ashleykleynhans/civitai-downloader.git && \
     mv civitai-downloader/download.sh /usr/local/bin/download-model && \
     chmod +x /usr/local/bin/download-model
 
 # Copy Stable Diffusion Web UI config files
 COPY relauncher.py webui-user.sh config.json ui-config.json /stable-diffusion-webui/
+
+# Copy ComfyUI config files
+COPY extra_model_paths.yaml /ComfyUI/
 
 # NGINX Proxy
 COPY nginx.conf /etc/nginx/nginx.conf

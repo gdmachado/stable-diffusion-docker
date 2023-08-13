@@ -1,0 +1,18 @@
+#config for a1111 ui
+#all you have to do is change the base_path to where yours is installed
+a111:
+    base_path: /workspace/stable-diffusion-webui/
+
+    checkpoints: models/Stable-diffusion
+    configs: models/Stable-diffusion
+    vae: models/VAE
+    loras: |
+         models/Lora
+         models/LyCORIS
+    upscale_models: |
+                  models/ESRGAN
+                  models/RealESRGAN
+                  models/SwinIR
+    embeddings: embeddings
+    hypernetworks: models/hypernetworks
+    controlnet: models/ControlNet
