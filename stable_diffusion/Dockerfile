@@ -1,14 +1,9 @@
 # Stage 1: Base
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
 
-ARG WEBUI_VERSION=v1.5.1
-ARG DREAMBOOTH_COMMIT=c2a5617c587b812b5a408143ddfb18fc49234edf
-ARG KOHYA_VERSION=V21.8.7
-ARG COMFYUI_COMMIT=8c730dc4a7225b2b103497ea1c2f67e48db145ab
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
-    TZ=Africa/Johannesburg \
+    TZ=Europe/London \
     PYTHONUNBUFFERED=1 \
     SHELL=/bin/bash
 
@@ -62,12 +57,15 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python
 # Stage 2: Install applications
 FROM base as setup
 
+ARG WEBUI_VERSION=v1.5.1
+ARG DREAMBOOTH_COMMIT=c2a5617c587b812b5a408143ddfb18fc49234edf
+ARG KOHYA_VERSION=v21.8.7
+ARG COMFYUI_COMMIT=8c730dc4a7225b2b103497ea1c2f67e48db145ab
+
 # Clone the git repo of the Stable Diffusion Web UI by Automatic1111
 # and set version
 WORKDIR /
-RUN git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git && \
-    cd /stable-diffusion-webui && \
-    git checkout ${WEBUI_VERSION}
+RUN git clone --depth=1 --branch $WEBUI_VERSION --single-branch https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
 
 WORKDIR /stable-diffusion-webui
 RUN python3 -m venv --system-site-packages /venv && \
@@ -85,11 +83,11 @@ RUN source /venv/bin/activate && \
 
 # Clone the Automatic1111 Extensions
 RUN git clone https://github.com/d8ahazard/sd_dreambooth_extension.git extensions/sd_dreambooth_extension && \
-    git clone https://github.com/deforum-art/sd-webui-deforum.git extensions/deforum && \
-    git clone https://github.com/Mikubill/sd-webui-controlnet.git extensions/sd-webui-controlnet && \
-    git clone https://github.com/ashleykleynhans/a1111-sd-webui-locon.git extensions/a1111-sd-webui-locon && \
-    git clone https://github.com/s0md3v/sd-webui-roop.git extensions/sd-webui-roop && \
-    git clone https://github.com/wcde/sd-webui-refiner.git extensions/sd-webui-refiner
+    git clone --depth=1 --single-branch https://github.com/deforum-art/sd-webui-deforum.git extensions/deforum && \
+    git clone --depth=1 --single-branch https://github.com/Mikubill/sd-webui-controlnet.git extensions/sd-webui-controlnet && \
+    git clone --depth=1 --single-branch https://github.com/ashleykleynhans/a1111-sd-webui-locon.git extensions/a1111-sd-webui-locon && \
+    git clone --depth=1 --single-branch https://github.com/s0md3v/sd-webui-roop.git extensions/sd-webui-roop && \
+    git clone --depth=1 --single-branch https://github.com/wcde/sd-webui-refiner.git extensions/sd-webui-refiner
 
 # Install depenencies for Deforum, ControlNet and roop
 RUN source /venv/bin/activate && \
@@ -104,7 +102,7 @@ RUN source /venv/bin/activate && \
 # Set Dreambooth extension version
 WORKDIR /stable-diffusion-webui/extensions/sd_dreambooth_extension
 RUN git checkout main && \
-    git reset ${DREAMBOOTH_COMMIT} --hard
+    git reset $DREAMBOOTH_COMMIT --hard
 
 # Install the dependencies for the Dreambooth extension
 WORKDIR /stable-diffusion-webui
@@ -122,10 +120,9 @@ RUN source /venv/bin/activate && \
     deactivate
 
 # Install Kohya_ss
-RUN git clone https://github.com/bmaltais/kohya_ss.git /kohya_ss
+RUN git clone --depth=1 --branch $KOHYA_VERSION --single-branch https://github.com/bmaltais/kohya_ss.git /kohya_ss
 WORKDIR /kohya_ss
-RUN git checkout ${KOHYA_VERSION} && \
-    python3 -m venv --system-site-packages venv && \
+RUN python3 -m venv --system-site-packages venv && \
     source venv/bin/activate && \
     pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
     pip3 install --no-cache-dir xformers==0.0.20 \
@@ -140,16 +137,19 @@ RUN git checkout ${KOHYA_VERSION} && \
     deactivate
 
 # Install ComfyUI
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /ComfyUI
+RUN git clone --depth=1 --single-branch https://github.com/comfyanonymous/ComfyUI.git /ComfyUI
 WORKDIR /ComfyUI
-RUN git reset ${COMFYUI_COMMIT} --hard && \
-    python3 -m venv --system-site-packages venv && \
+RUN python3 -m venv --system-site-packages venv && \
     source venv/bin/activate && \
     pip3 install --no-cache-dir torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118 xformers && \
     pip3 install --no-cache-dir wheel && \
     pip3 install -r requirements.txt && \
     pip3 cache purge && \
     deactivate
+
+# Install ComfyUI manager
+WORKDIR /ComfyUI/custom_nodes
+RUN git clone --depth=1 --single-branch https://github.com/ltdrdata/ComfyUI-Manager.git
 
 # Install Jupyter
 RUN pip3 install -U --no-cache-dir jupyterlab \
@@ -164,7 +164,7 @@ RUN wget https://github.com/runpod/runpodctl/releases/download/v1.10.0/runpodctl
     mv runpodctl /usr/local/bin
 
 # Install CivitAI Model Downloader
-RUN git clone https://github.com/ashleykleynhans/civitai-downloader.git && \
+RUN git clone --depth=1 --single-branch https://github.com/ashleykleynhans/civitai-downloader.git && \
     mv civitai-downloader/download.sh /usr/local/bin/download-model && \
     chmod +x /usr/local/bin/download-model
 
@@ -188,6 +188,10 @@ RUN chmod +x /start.sh && \
     chmod +x /pre_start.sh && \
     chmod +x /fix_venv.sh && \
     chmod +x /download_sdxl_models.sh
+
+# Cleanup
+WORKDIR /
+RUN rm -rf /root/.cache/pip
 
 # Start the container
 SHELL ["/bin/bash", "--login", "-c"]
